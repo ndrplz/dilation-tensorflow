@@ -60,13 +60,10 @@ def predict(image, model, ds):
 
 if __name__ == '__main__':
 
-    # black magic to insert in topology
-    # weight_value_tuples = [(t[0], np.transpose(t[1], (2, 3, 1, 0)) if len(np.shape(t[1]))==4 else t[1]) for t in weight_value_tuples]
-
     ds = 'cityscapes'  # choose between cityscapes, kitti, camvid, voc12
 
     # get the model
-    model = DilationNet(dataset=ds)
+    model = DilationNet(dataset=ds, apply_softmax=False)
     model.compile(optimizer='sgd', loss='categorical_crossentropy')
     model.summary()
 

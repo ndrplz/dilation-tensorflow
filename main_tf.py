@@ -1,9 +1,21 @@
 import tensorflow as tf
+import numpy as np
+import h5py
+import pickle
 
+
+weights_path = '/home/minotauro/code/dilation-tensorflow/data/pretrained_corr_channels_last.h5'
+with open('data/pretrained_conv_channels_last.pickle', 'rb') as f:
+    w_pretrained = pickle.load(f)
+
+
+def my_constant_initializer(shape, dtype, *args, **kwargs):
+    # return tf.ones(shape=shape, dtype=dtype)
+    return w_pretrained['conv1_1/kernel:0']
 
 def get_dilation_model(input_tensor, classes):
 
-    h = tf.layers.conv2d(input_tensor, 64, (3, 3), activation=tf.nn.relu, name='conv1_1')               # h = Convolution2D(64, 3, 3, activation='relu', name='conv1_1')(model_in)
+    h = tf.layers.conv2d(input_tensor, 64, (3, 3), activation=tf.nn.relu, name='conv1_1', kernel_initializer=my_constant_initializer)               # h = Convolution2D(64, 3, 3, activation='relu', name='conv1_1')(model_in)
     h = tf.layers.conv2d(h, 64, (3, 3), activation=tf.nn.relu, name='conv1_2')                          # h = Convolution2D(64, 3, 3, activation='relu', name='conv1_2')(h)
     h = tf.layers.max_pooling2d(h, pool_size=(2, 2), strides=(2, 2), padding='valid', name='pool1')     # h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool1')(h)
     h = tf.layers.conv2d(h, 128, (3, 3), activation=tf.nn.relu, name='conv2_1')                         # h = Convolution2D(128, 3, 3, activation='relu', name='conv2_1')(h)
@@ -47,7 +59,35 @@ def get_dilation_model(input_tensor, classes):
     h = tf.layers.conv2d(h, classes, (3, 3), activation=tf.nn.relu, name='ctx_fc1')                              # h = Convolution2D(classes, 3, 3, activation='relu', name='ctx_fc1')(h)
     h = tf.layers.conv2d(h, classes, (1, 1), activation=None, name='ctx_final')                                  # h = Convolution2D(classes, 1, 1, name='ctx_final')(h)
 
-    return h
+    h = tf.image.resize_bilinear(h, size=(1024, 1024))
+    logits = tf.layers.conv2d(h, classes, (16, 16), padding='same', use_bias=False, trainable=False, name='ctx_upsample')  # logits = Convolution2D(classes, 16, 16, border_mode='same', bias=False, trainable=False, name='ctx_upsample')(h)
+
+    softmax = tf.nn.softmax(logits, dim=3, name='softmax')
+
+    return softmax
+
+
+def convert_kernel(kernel):
+    """Converts a Numpy kernel matrix from Theano format to TensorFlow format.
+
+    Also works reciprocally, since the transformation is its own inverse.
+
+    # Arguments
+        kernel: Numpy array (4D or 5D).
+
+    # Returns
+        The converted kernel.
+
+    # Raises
+        ValueError: in case of invalid kernel shape or invalid data_format.
+    """
+    kernel = np.asarray(kernel)
+    if not 4 <= kernel.ndim <= 5:
+        raise ValueError('Invalid kernel shape:', kernel.shape)
+    slices = [slice(None, None, -1) for _ in range(kernel.ndim)]
+    no_flip = (slice(None, None), slice(None, None))
+    slices[-2:] = no_flip
+    return np.copy(kernel[slices])
 
 
 if __name__ == '__main__':
@@ -55,4 +95,12 @@ if __name__ == '__main__':
     input_tensor = tf.placeholder(tf.float32, shape=(None, 1396, 1396, 3))
     num_classes  = 19
 
+
     model_out = get_dilation_model(input_tensor, num_classes)
+
+    with tf.Session() as sess:
+
+        sess.run(tf.global_variables_initializer())
+
+        trainable_variables = tf.trainable_variables()
+        pass

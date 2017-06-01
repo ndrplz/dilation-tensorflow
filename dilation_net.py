@@ -306,6 +306,7 @@ def DilationNet(dataset, input_shape=None, apply_softmax=True, pretrained=True,
         weights_path = get_file(CONFIG[dataset]['weights_file'],
                                 CONFIG[dataset]['weights_url'],
                                 cache_subdir='models')
+
         model.load_weights(weights_path)
         convert_all_kernels_in_model(model)
 

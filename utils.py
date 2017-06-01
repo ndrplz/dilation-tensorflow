@@ -1,7 +1,39 @@
+# weight_value_tuples = [(t[0], np.transpose(t[1], (2, 3, 1, 0)) if len(np.shape(t[1]))==4 else t[1]) for t in weight_value_tuples]
+
 import numpy as np
 from keras.layers import Permute, Reshape, Activation
 #import numba
 
+
+# import pickle
+# my_dict = {}
+# for v in weight_value_tuples:
+#     name = v[0].name
+#     value = np.array(v[1])
+#     my_dict[name] = value
+# with open('data/pretrained_conv_channel_first.pickle', 'wb') as dump_file:
+#     pickle.dump(my_dict, dump_file)
+
+
+# with open('data/pretrained_conv_channel_first.pickle', 'rb') as f:
+#     pretrained_theano = pickle.load(f)
+#
+# # convert to channel last
+# dict_conv_channels_last = {}
+# for k, v in pretrained_theano.items():
+#     if len(v.shape) == 4:
+#         v = np.transpose(v, axes=(2, 3, 1, 0))
+#     dict_conv_channels_last[k] = v
+# with open('data/pretrained_conv_channels_last.pickle', 'wb') as f:
+#     pickle.dump(dict_conv_channels_last, f)
+#
+# dict_corr_channels_last = {}
+# for k, v in dict_conv_channels_last.items():
+#     if len(v.shape) == 4:
+#         v = convert_kernel(v)
+#     dict_corr_channels_last[k] = v
+# with open('data/pretrained_corr_channels_last.pickle', 'wb') as f:
+#     pickle.dump(dict_corr_channels_last, f)
 
 # this function is the same as the one in the original repository
 # basically it performs upsampling for datasets having zoom > 1
