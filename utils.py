@@ -1,39 +1,7 @@
-# weight_value_tuples = [(t[0], np.transpose(t[1], (2, 3, 1, 0)) if len(np.shape(t[1]))==4 else t[1]) for t in weight_value_tuples]
-
 import numpy as np
-from keras.layers import Permute, Reshape, Activation
+from datasets import CONFIG
 #import numba
 
-
-# import pickle
-# my_dict = {}
-# for v in weight_value_tuples:
-#     name = v[0].name
-#     value = np.array(v[1])
-#     my_dict[name] = value
-# with open('data/pretrained_conv_channel_first.pickle', 'wb') as dump_file:
-#     pickle.dump(my_dict, dump_file)
-
-
-# with open('data/pretrained_conv_channel_first.pickle', 'rb') as f:
-#     pretrained_theano = pickle.load(f)
-#
-# # convert to channel last
-# dict_conv_channels_last = {}
-# for k, v in pretrained_theano.items():
-#     if len(v.shape) == 4:
-#         v = np.transpose(v, axes=(2, 3, 1, 0))
-#     dict_conv_channels_last[k] = v
-# with open('data/pretrained_conv_channels_last.pickle', 'wb') as f:
-#     pickle.dump(dict_conv_channels_last, f)
-#
-# dict_corr_channels_last = {}
-# for k, v in dict_conv_channels_last.items():
-#     if len(v.shape) == 4:
-#         v = convert_kernel(v)
-#     dict_corr_channels_last[k] = v
-# with open('data/pretrained_corr_channels_last.pickle', 'wb') as f:
-#     pickle.dump(dict_corr_channels_last, f)
 
 # this function is the same as the one in the original repository
 # basically it performs upsampling for datasets having zoom > 1
@@ -55,22 +23,54 @@ def interp_map(prob, zoom, width, height):
     return zoom_prob
 
 
-def softmax(x, restore_shape=True):
-    """
-    Softmax activation for a tensor x. No need to unroll the input first.
 
-    :param x: x is a tensor with shape (None, channels, h, w)
-    :param restore_shape: if False, output is returned unrolled (None, h * w, channels)
-    :return: softmax activation of tensor x
-    """
-    _, c, h, w = x._keras_shape
-    x = Permute(dims=(2, 3, 1))(x)
-    x = Reshape(target_shape=(h * w, c))(x)
+# predict function, mostly reported as it was in the original repo
+def predict(image, model, ds, sess):
 
-    x = Activation('softmax')(x)
+    image = image.astype(np.float32) - CONFIG[ds]['mean_pixel']
+    conv_margin = CONFIG[ds]['conv_margin']
 
-    if restore_shape:
-        x = Reshape(target_shape=(h, w, c))(x)
-        x = Permute(dims=(3, 1, 2))(x)
+    input_dims = (1,) + CONFIG[ds]['input_shape']
+    batch_size, input_height, input_width, num_channels = input_dims
+    model_in = np.zeros(input_dims, dtype=np.float32)
 
-    return x
+    image_size = image.shape
+    output_height = input_height - 2 * conv_margin
+    output_width = input_width - 2 * conv_margin
+    image = cv2.copyMakeBorder(image, conv_margin, conv_margin,
+                               conv_margin, conv_margin,
+                               cv2.BORDER_REFLECT_101)
+
+    num_tiles_h = image_size[0] // output_height + (1 if image_size[0] % output_height else 0)
+    num_tiles_w = image_size[1] // output_width  + (1 if image_size[1] % output_width else 0)
+
+    row_prediction = []
+    for h in range(num_tiles_h):
+        col_prediction = []
+        for w in range(num_tiles_w):
+            offset = [output_height * h,
+                      output_width * w]
+            tile = image[offset[0]:offset[0] + input_height,
+                         offset[1]:offset[1] + input_width, :]
+            margin = [0, input_height - tile.shape[0],
+                      0, input_width - tile.shape[1]]
+            tile = cv2.copyMakeBorder(tile, margin[0], margin[1],
+                                      margin[2], margin[3],
+                                      cv2.BORDER_REFLECT_101)
+
+            model_in[0] = tile
+
+            prob = sess.run(model, feed_dict={input_tensor: tile[None, ...]})[0]
+
+            col_prediction.append(prob)
+
+        col_prediction = np.concatenate(col_prediction, axis=1)  # previously axis=2
+        row_prediction.append(col_prediction)
+    prob = np.concatenate(row_prediction, axis=0)
+    if CONFIG[ds]['zoom'] > 1:
+        prob = interp_map(prob, CONFIG[ds]['zoom'], image_size[1], image_size[0])
+
+    prediction = np.argmax(prob, axis=2)
+    color_image = CONFIG[ds]['palette'][prediction.ravel()].reshape(image_size)
+
+    return color_image
