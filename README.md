@@ -7,6 +7,10 @@ Currently, only the model pretrained on CityScapes is available. I plan to conve
 
 You you're looking instead for a *Keras+Theano* implementation of this very same network you can find it [here](https://github.com/DavideA/dilation-keras).
 
+## Examples
+
+### Cityscapes
+
 <table style="width:100%">
   <tr>
     <th>
@@ -24,14 +28,35 @@ You you're looking instead for a *Keras+Theano* implementation of this very same
     </tr>
 </table>
 
+### CamVid
+
+<table style="width:100%">
+  <tr>
+    <th>
+      <p align="center">
+           <img src="data/camvid.png" alt="input">
+           <br>Test image (input)
+      </p>
+    </th>
+        <th>
+          <p align="center">
+           <img src="data/camvid_out.png" alt="segmentation">
+           <br>Test image (prediction)
+        </p>
+    </th>
+    </tr>
+</table>
+
 ## How-to
 1. Download pretrained weights from here:
 
     [CityScapes weights](https://drive.google.com/open?id=0Bx9YaGcDPu3XR0d4cXVSWmtVdEE)
     
+    [CamVid weights](https://drive.google.com/open?id=0Bx9YaGcDPu3Xd0JrcXZpTEpkb0U)
+    
 2. Move weights file into [`data`](data) directory.
 
-3. Run the model on the test image by executing [`main_tf.py`](main_tf.py)
+3. Run the model on the test image by executing [`main_tf.py`](main_tf.py).
 
 ## Configuration
 
