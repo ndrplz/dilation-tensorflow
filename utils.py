@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 from datasets import CONFIG
 #import numba
@@ -7,8 +8,9 @@ from datasets import CONFIG
 # basically it performs upsampling for datasets having zoom > 1
 # @numba.jit(nopython=True)
 def interp_map(prob, zoom, width, height):
-    zoom_prob = np.zeros((prob.shape[0], height, width), dtype=np.float32)
-    for c in range(prob.shape[0]):
+    channels = prob.shape[2]
+    zoom_prob = np.zeros((height, width, channels), dtype=np.float32)
+    for c in range(channels):
         for h in range(height):
             for w in range(width):
                 r0 = h // zoom
@@ -17,15 +19,14 @@ def interp_map(prob, zoom, width, height):
                 c1 = c0 + 1
                 rt = float(h) / zoom - r0
                 ct = float(w) / zoom - c0
-                v0 = rt * prob[c, r1, c0] + (1 - rt) * prob[c, r0, c0]
-                v1 = rt * prob[c, r1, c1] + (1 - rt) * prob[c, r0, c1]
-                zoom_prob[c, h, w] = (1 - ct) * v0 + ct * v1
+                v0 = rt * prob[r1, c0, c] + (1 - rt) * prob[r0, c0, c]
+                v1 = rt * prob[r1, c1, c] + (1 - rt) * prob[r0, c1, c]
+                zoom_prob[h, w, c] = (1 - ct) * v0 + ct * v1
     return zoom_prob
 
 
-
 # predict function, mostly reported as it was in the original repo
-def predict(image, model, ds, sess):
+def predict(image, input_tensor, model, ds, sess):
 
     image = image.astype(np.float32) - CONFIG[ds]['mean_pixel']
     conv_margin = CONFIG[ds]['conv_margin']
