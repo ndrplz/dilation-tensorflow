@@ -1,6 +1,6 @@
 import numpy as np
 
-# configuration for different datasets
+# Configurations for different datasets
 CONFIG = {
     'cityscapes': {
         'classes': 19,

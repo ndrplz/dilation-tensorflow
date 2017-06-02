@@ -1,90 +1,39 @@
 import tensorflow as tf
-import numpy as np
-import h5py
 import pickle
+import numpy as np
+import cv2
+import os.path as path
+from datasets import CONFIG
+from utils import interp_map
 
 
-weights_path = '/home/minotauro/code/dilation-tensorflow/data/pretrained_corr_channels_last.h5'
-with open('data/pretrained_conv_channels_last.pickle', 'rb') as f:
+# Load dict of pretrained weights
+with open('data/pretrained_dilation_cityscapes.pickle', 'rb') as f:
     w_pretrained = pickle.load(f)
 
 
-# def get_dilation_model(input_tensor, classes):
-#
-#     h = tf.layers.conv2d(input_tensor, 64, (3, 3), activation=tf.nn.relu, name='conv1_1', kernel_initializer=my_constant_initializer)               # h = Convolution2D(64, 3, 3, activation='relu', name='conv1_1')(model_in)
-#     h = tf.layers.conv2d(h, 64, (3, 3), activation=tf.nn.relu, name='conv1_2')                          # h = Convolution2D(64, 3, 3, activation='relu', name='conv1_2')(h)
-#     h = tf.layers.max_pooling2d(h, pool_size=(2, 2), strides=(2, 2), padding='valid', name='pool1')     # h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool1')(h)
-#     h = tf.layers.conv2d(h, 128, (3, 3), activation=tf.nn.relu, name='conv2_1')                         # h = Convolution2D(128, 3, 3, activation='relu', name='conv2_1')(h)
-#     h = tf.layers.conv2d(h, 128, (3, 3), activation=tf.nn.relu, name='conv2_2')                         # h = Convolution2D(128, 3, 3, activation='relu', name='conv2_2')(h)
-#     h = tf.layers.max_pooling2d(h, pool_size=(2, 2), strides=(2, 2), padding='valid', name='pool2')     # h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool2')(h)
-#     h = tf.layers.conv2d(h, 256, (3, 3), activation=tf.nn.relu, name='conv3_1')                         # h = Convolution2D(256, 3, 3, activation='relu', name='conv3_1')(h)
-#     h = tf.layers.conv2d(h, 256, (3, 3), activation=tf.nn.relu, name='conv3_2')                         # h = Convolution2D(256, 3, 3, activation='relu', name='conv3_2')(h)
-#     h = tf.layers.conv2d(h, 256, (3, 3), activation=tf.nn.relu, name='conv3_3')                         # h = Convolution2D(256, 3, 3, activation='relu', name='conv3_3')(h)
-#     h = tf.layers.max_pooling2d(h, pool_size=(2, 2), strides=(2, 2), padding='valid', name='pool3')     # h = MaxPooling2D(pool_size=(2, 2), strides=(2, 2), name='pool3')(h)
-#     h = tf.layers.conv2d(h, 512, (3, 3), activation=tf.nn.relu, name='conv4_1')                         # h = Convolution2D(512, 3, 3, activation='relu', name='conv4_1')(h)
-#     h = tf.layers.conv2d(h, 512, (3, 3), activation=tf.nn.relu, name='conv4_2')                         # h = Convolution2D(512, 3, 3, activation='relu', name='conv4_2')(h)
-#     h = tf.layers.conv2d(h, 512, (3, 3), activation=tf.nn.relu, name='conv4_3')                         # h = Convolution2D(512, 3, 3, activation='relu', name='conv4_3')(h)
-#
-#     h = tf.layers.conv2d(h, 512, (3, 3), dilation_rate=(2, 2), activation=tf.nn.relu, name='conv5_1')   # h = AtrousConvolution2D(512, 3, 3, atrous_rate=(2, 2), activation='relu', name='conv5_1')(h)
-#     h = tf.layers.conv2d(h, 512, (3, 3), dilation_rate=(2, 2), activation=tf.nn.relu, name='conv5_2')   # h = AtrousConvolution2D(512, 3, 3, atrous_rate=(2, 2), activation='relu', name='conv5_2')(h)
-#     h = tf.layers.conv2d(h, 512, (3, 3), dilation_rate=(2, 2), activation=tf.nn.relu, name='conv5_3')   # h = AtrousConvolution2D(512, 3, 3, atrous_rate=(2, 2), activation='relu', name='conv5_3')(h)
-#     h = tf.layers.conv2d(h, 4096, (7, 7), dilation_rate=(4, 4), activation=tf.nn.relu, name='fc6')      # h = AtrousConvolution2D(4096, 7, 7, atrous_rate=(4, 4), activation='relu', name='fc6')(h)
-#
-#     h = tf.layers.dropout(h, rate=0.5, name='drop6')                                                    # h = Dropout(0.5, name='drop6')(h)
-#     tf.layers.conv2d(h, 4096, (1, 1), activation=tf.nn.relu, name='fc7')                                # h = Convolution2D(4096, 1, 1, activation='relu', name='fc7')(h)
-#     h = tf.layers.dropout(h, rate=0.5, name='drop7')                                                    # h = Dropout(0.5, name='drop7')(h)
-#     h = tf.layers.conv2d(h, classes, (1, 1), name='final')                                              # h = Convolution2D(classes, 1, 1, name='final')(h)
-#
-#     h = tf.pad(h, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='CONSTANT', name='ctx_pad1_1')                          # h = ZeroPadding2D(padding=(1, 1))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), activation=tf.nn.relu, name='ctx_conv1_1')                          # h = Convolution2D(classes, 3, 3, activation='relu', name='ctx_conv1_1')(h)
-#     h = tf.pad(h, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='CONSTANT', name='ctx_pad1_2')                          # h = ZeroPadding2D(padding=(1, 1))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), activation=tf.nn.relu, name='ctx_conv1_2')                          # h = Convolution2D(classes, 3, 3, activation='relu', name='ctx_conv1_2')(h)
-#     h = tf.pad(h, [[0, 0], [2, 2], [2, 2], [0, 0]], mode='CONSTANT', name='ctx_pad2_1')                          # h = ZeroPadding2D(padding=(2, 2))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(2, 2), activation=tf.nn.relu, name='ctx_conv2_1')    # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(2, 2), activation='relu', name='ctx_conv2_1')(h)
-#     h = tf.pad(h, [[0, 0], [4, 4], [4, 4], [0, 0]], mode='CONSTANT', name='ctx_pad3_1')                          # h = ZeroPadding2D(padding=(4, 4))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(4, 4), activation=tf.nn.relu, name='ctx_conv3_1')    # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(4, 4), activation='relu', name='ctx_conv3_1')(h)
-#     h = tf.pad(h, [[0, 0], [8, 8], [8, 8], [0, 0]], mode='CONSTANT', name='ctx_pad4_1')                          # h = ZeroPadding2D(padding=(8, 8))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(8, 8), activation=tf.nn.relu, name='ctx_conv4_1')    # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(8, 8), activation='relu', name='ctx_conv4_1')(h)
-#     h = tf.pad(h, [[0, 0], [16, 16], [16, 16], [0, 0]], mode='CONSTANT', name='ctx_pad5_1')                      # h = ZeroPadding2D(padding=(16, 16))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(16, 16), activation=tf.nn.relu, name='ctx_conv5_1')  # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(16, 16), activation='relu', name='ctx_conv5_1')(h)
-#     h = tf.pad(h, [[0, 0], [32, 32], [32, 32], [0, 0]], mode='CONSTANT', name='ctx_pad6_1')                      # h = ZeroPadding2D(padding=(32, 32))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(32, 32), activation=tf.nn.relu, name='ctx_conv6_1')  # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(32, 32), activation='relu', name='ctx_conv6_1')(h)
-#     h = tf.pad(h, [[0, 0], [64, 64], [64, 64], [0, 0]], mode='CONSTANT', name='ctx_pad7_1')                      # h = ZeroPadding2D(padding=(64, 64))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), dilation_rate=(64, 64), activation=tf.nn.relu, name='ctx_conv7_1')  # h = AtrousConvolution2D(classes, 3, 3, atrous_rate=(64, 64), activation='relu', name='ctx_conv7_1')(h)
-#     h = tf.pad(h, [[0, 0], [1, 1], [1, 1], [0, 0]], mode='CONSTANT', name='ctx_pad_fc1')                         # h = ZeroPadding2D(padding=(1, 1))(h)
-#     h = tf.layers.conv2d(h, classes, (3, 3), activation=tf.nn.relu, name='ctx_fc1')                              # h = Convolution2D(classes, 3, 3, activation='relu', name='ctx_fc1')(h)
-#     h = tf.layers.conv2d(h, classes, (1, 1), activation=None, name='ctx_final')                                  # h = Convolution2D(classes, 1, 1, name='ctx_final')(h)
-#
-#     h = tf.image.resize_bilinear(h, size=(1024, 1024))
-#     logits = tf.layers.conv2d(h, classes, (16, 16), padding='same', use_bias=False, trainable=False, name='ctx_upsample')  # logits = Convolution2D(classes, 16, 16, border_mode='same', bias=False, trainable=False, name='ctx_upsample')(h)
-#
-#     softmax = tf.nn.softmax(logits, dim=3, name='softmax')
-#
-#     return softmax
+def dilation_model_pretrained(input_tensor):
 
-def conv(name, input, strides, padding, add_bias, apply_relu, atrous_rate=None):
+    def conv(name, input, strides, padding, add_bias, apply_relu, atrous_rate=None):
 
-    with tf.variable_scope(name):
+        with tf.variable_scope(name):
 
-        # Load kernel weights and apply convolution
-        w_kernel = w_pretrained[name+'/kernel:0']
-        if not atrous_rate:
-            conv_out = tf.nn.conv2d(input, w_kernel, strides, padding)
-        else:
-            conv_out = tf.nn.atrous_conv2d(input, w_kernel, atrous_rate, padding)
-        if add_bias:
-            # Load bias values and add them to conv output
-            w_bias   = w_pretrained[name+'/bias:0']
-            conv_out = tf.nn.bias_add(conv_out, w_bias)
+            # Load kernel weights and apply convolution
+            w_kernel = w_pretrained[name + '/kernel:0']
+            if not atrous_rate:
+                conv_out = tf.nn.conv2d(input, w_kernel, strides, padding)
+            else:
+                conv_out = tf.nn.atrous_conv2d(input, w_kernel, atrous_rate, padding)
+            if add_bias:
+                # Load bias values and add them to conv output
+                w_bias = w_pretrained[name + '/bias:0']
+                conv_out = tf.nn.bias_add(conv_out, w_bias)
 
-        if apply_relu:
-            # Apply ReLu nonlinearity
-            conv_out = tf.nn.relu(conv_out)
+            if apply_relu:
+                # Apply ReLu nonlinearity
+                conv_out = tf.nn.relu(conv_out)
 
-    return conv_out
-
-
-def get_dilation_model_pretrained(input_tensor, classes):
+        return conv_out
 
     h = conv('conv1_1', input_tensor, strides=[1, 1, 1, 1], padding='VALID', add_bias=True, apply_relu=True)
     h = conv('conv1_2', h, strides=[1, 1, 1, 1], padding='VALID', add_bias=True, apply_relu=True)
@@ -148,39 +97,80 @@ def get_dilation_model_pretrained(input_tensor, classes):
     return softmax
 
 
-def convert_kernel(kernel):
-    """Converts a Numpy kernel matrix from Theano format to TensorFlow format.
+# predict function, mostly reported as it was in the original repo
+def predict(image, model, ds, sess):
 
-    Also works reciprocally, since the transformation is its own inverse.
+    image = image.astype(np.float32) - CONFIG[ds]['mean_pixel']
+    conv_margin = CONFIG[ds]['conv_margin']
 
-    # Arguments
-        kernel: Numpy array (4D or 5D).
+    input_dims = (1,) + CONFIG[ds]['input_shape']
+    batch_size, input_height, input_width, num_channels = input_dims
+    model_in = np.zeros(input_dims, dtype=np.float32)
 
-    # Returns
-        The converted kernel.
+    image_size = image.shape
+    output_height = input_height - 2 * conv_margin
+    output_width = input_width - 2 * conv_margin
+    image = cv2.copyMakeBorder(image, conv_margin, conv_margin,
+                               conv_margin, conv_margin,
+                               cv2.BORDER_REFLECT_101)
 
-    # Raises
-        ValueError: in case of invalid kernel shape or invalid data_format.
-    """
-    kernel = np.asarray(kernel)
-    if not 4 <= kernel.ndim <= 5:
-        raise ValueError('Invalid kernel shape:', kernel.shape)
-    slices = [slice(None, None, -1) for _ in range(kernel.ndim)]
-    no_flip = (slice(None, None), slice(None, None))
-    slices[-2:] = no_flip
-    return np.copy(kernel[slices])
+    num_tiles_h = image_size[0] // output_height + (1 if image_size[0] % output_height else 0)
+    num_tiles_w = image_size[1] // output_width  + (1 if image_size[1] % output_width else 0)
+
+    row_prediction = []
+    for h in range(num_tiles_h):
+        col_prediction = []
+        for w in range(num_tiles_w):
+            offset = [output_height * h,
+                      output_width * w]
+            tile = image[offset[0]:offset[0] + input_height,
+                         offset[1]:offset[1] + input_width, :]
+            margin = [0, input_height - tile.shape[0],
+                      0, input_width - tile.shape[1]]
+            tile = cv2.copyMakeBorder(tile, margin[0], margin[1],
+                                      margin[2], margin[3],
+                                      cv2.BORDER_REFLECT_101)
+
+            model_in[0] = tile
+
+            prob = sess.run(model, feed_dict={input_tensor: tile[None, ...]})[0]
+
+            col_prediction.append(prob)
+
+        col_prediction = np.concatenate(col_prediction, axis=1)  # previously axis=2
+        row_prediction.append(col_prediction)
+    prob = np.concatenate(row_prediction, axis=0)
+    if CONFIG[ds]['zoom'] > 1:
+        prob = interp_map(prob, CONFIG[ds]['zoom'], image_size[1], image_size[0])
+
+    prediction = np.argmax(prob, axis=2)
+    color_image = CONFIG[ds]['palette'][prediction.ravel()].reshape(image_size)
+
+    return color_image
 
 
 if __name__ == '__main__':
 
     input_tensor = tf.placeholder(tf.float32, shape=(None, 1396, 1396, 3))
-    num_classes  = 19
 
-    model_out = get_dilation_model_pretrained(input_tensor, num_classes)
+    # Create pretrained model
+    model = dilation_model_pretrained(input_tensor)
 
     with tf.Session() as sess:
 
         sess.run(tf.global_variables_initializer())
 
-        trainable_variables = tf.trainable_variables()
-        pass
+        # Parameters
+        dataset_name = 'cityscapes'
+        input_image_path  = path.join('data', dataset_name+'.png')
+        output_image_path = path.join('data', dataset_name+'_out.png')
+
+        # Read and predict on a test image
+        input_image = cv2.imread(input_image_path)
+        predicted_image = predict(input_image, model, dataset_name, sess)
+
+        # Convert colorspace (palette is in RGB) and save prediction result
+        predicted_image = cv2.cvtColor(predicted_image, cv2.COLOR_BGR2RGB)
+        cv2.imwrite(output_image_path, predicted_image)
+
+
