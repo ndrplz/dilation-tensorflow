@@ -65,5 +65,9 @@ This model has been tested with the following configuration:
 - python 3.5.2
 - tensorflow 1.1.0
 - cv2 3.2.0
+
+## Acknowledgements
+
+Thanks to [DavideA](https://github.com/DavideA) which converted all weights from Caffe to Keras+Theano ([here](https://github.com/DavideA/dilation-keras)) making my effort of conversion towards TensorFlow much less painful than it could have been :-)
   
   
