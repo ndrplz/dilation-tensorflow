@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def dilation_model_pretrained(dataset, input_tensor, w_pretrained):
+def dilation_model_pretrained(dataset, input_tensor, w_pretrained, trainable):
 
     def conv(name, input, strides, padding, add_bias, apply_relu, atrous_rate=None):
         """
@@ -11,6 +11,8 @@ def dilation_model_pretrained(dataset, input_tensor, w_pretrained):
 
             # Load kernel weights and apply convolution
             w_kernel = w_pretrained[name + '/kernel:0']
+            w_kernel = tf.Variable(initial_value=w_kernel, trainable=trainable)
+
             if not atrous_rate:
                 conv_out = tf.nn.conv2d(input, w_kernel, strides, padding)
             else:
@@ -18,6 +20,7 @@ def dilation_model_pretrained(dataset, input_tensor, w_pretrained):
             if add_bias:
                 # Load bias values and add them to conv output
                 w_bias = w_pretrained[name + '/bias:0']
+                w_bias = tf.Variable(initial_value=w_bias, trainable=trainable)
                 conv_out = tf.nn.bias_add(conv_out, w_bias)
 
             if apply_relu:

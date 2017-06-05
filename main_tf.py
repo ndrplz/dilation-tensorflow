@@ -10,7 +10,7 @@ from datasets import CONFIG
 if __name__ == '__main__':
 
     # Choose between 'cityscapes' and 'camvid'
-    dataset = 'cityscapes'
+    dataset = 'camvid'
 
     # Load dict of pretrained weights
     print('Loading pre-trained weights...')
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     input_tensor = tf.placeholder(tf.float32, shape=(None, input_h, input_w, input_c))
 
     # Create pretrained model
-    model = dilation_model_pretrained(dataset, input_tensor, w_pretrained)
+    model = dilation_model_pretrained(dataset, input_tensor, w_pretrained, trainable=False)
 
     # Test pretrained model
     with tf.Session() as sess:
