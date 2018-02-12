@@ -3,7 +3,7 @@ A native *Tensorflow* implementation of semantic segmentation according to [Mult
 
 Pretrained weights have been converted to TensorFlow from the [original Caffe implementation](https://github.com/fyu/dilation).
 
-Currently, only the model pretrained on CityScapes is available. I plan to convert soon also the model trained on CamVid dataset.
+Model pretrained either on CityScapes or on CamVid datasets is available.
 
 You you're looking instead for a *Keras+Theano* implementation of this very same network you can find it [here](https://github.com/DavideA/dilation-keras).
 
